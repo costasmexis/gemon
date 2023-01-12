@@ -1,73 +1,61 @@
-from cobrapy_bigg_client import client
-
-bigg_model = client.download_model("e_coli_core", save=False)
-print(bigg_model)  # => cobra.core.model.Model
+#%%
+import pandas as pd
+import matplotlib.pyplot as plt
 
 import networkx as nx
+from networkx import from_pandas_edgelist
+%matplotlib inline
 
-G = nx.DiGraph()
+SEED = 42
 
-for node in bigg_model.metabolites:
-    G.add_node(node.id, name=node.name)
+df = pd.read_csv('../data/queries/query-result-full.csv')
+print(df.head())
+print(df.shape)
 
+G = from_pandas_edgelist(df, source='s', target='o', 
+                            create_using=nx.DiGraph)
+print('Nodes:', G.number_of_nodes())
+print('Edges:', G.number_of_edges())
+# %%
+''' Directed / Undirected Graph'''
 
-# Add the edges (reactions) to the graph
-for edge in bigg_model.reactions:
-    for metabolite in edge.metabolites:
-        G.add_edge(metabolite, edge.id)
+if nx.is_directed(G): print('Graph IS DIRECTED.')
+else: print('Graph IS UNDIRECTED')
+# %%
+def plot_graph():
+    plt.figure(figsize=(50, 25), dpi=80)
+    nx.draw_networkx(G, with_labels=False, node_size=100)
+    plt.show()
+# %%
+print("The Graph's density is", round(nx.density(G), 4))
+# %%
+pageRank = pd.DataFrame.from_dict(nx.pagerank(G), orient='index').sort_values(by=0, ascending=False)
+pageRank = pageRank.rename(columns={0:'PageRank'})
 
-from torch_geometric.data import Data
+print('Top 10 nodes by PageRank:')
+display(pageRank.head(10))
 
-edge_index = torch.tensor(list(G.edges()), dtype=torch.long)
-x = torch.tensor([G.nodes[i]["name"] for i in G.nodes], dtype=torch.float)
-data = Data(x=x, edge_index=edge_index)
+print('Last 10 nodes by PageRank:')
+display(pageRank.tail(10))
+# %%
+''' Betweenness Centrality '''
+betCen = nx.betweenness_centrality(G)
+betCen = pd.DataFrame.from_dict(nx.betweenness_centrality(G, seed=SEED), orient='index').sort_values(by=0, ascending=False)
+betCen = betCen.rename(columns={0:'BC'})
 
-import torch.nn as nn
+print('Top 10 nodes by Betweenness Centrality:')
+display(betCen.head(10))
 
-# choose any GNN model from torch_geometric.nn
-class Net(nn.Module):
-    def __init__(self):
-        super(Net, self).__init__()
-        self.conv1 = GCNConv(data.num_node_features, 16)
-        self.conv2 = GCNConv(16, data.num_node_features)
+print('Last 20 nodes by Betweenness Centrality:')
+display(betCen.tail(20))
+# %%
+''' Eigenvector Centrality '''
+eigCen = pd.DataFrame.from_dict(nx.eigenvector_centrality(G), orient='index').sort_values(by=0, ascending=False)
+eigCen = eigCen.rename(columns={0:'EC'})
 
-    def forward(self, data):
-        x, edge_index = data.x, data.edge_index
+print('Top 10 nodes by Eigenvector Centrality:')
+display(eigCen.head(10))
 
-        x = self.conv1(x, edge_index)
-        x = F.relu(x)
-        x = self.conv2(x, edge_index)
-
-        return x
-
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-model = Net().to(device)
-data = data.to(device)
-optimizer = torch.optim.Adam(model.parameters(), lr=0.01, weight_decay=5e-4)
-
-model.train()
-for epoch in range(200):
-    optimizer.zero_grad()
-    out = model(data)
-    loss = F.mse_loss(out, data.x)
-    loss.backward()
-    optimizer.step()
-
-with torch.no_grad():
-    node_representations = model(data).detach()
-
-# Use some clustering algorithm like Kmeans to group similar nodes together
-from sklearn.cluster import KMeans
-kmeans = KMeans(n_clusters=10, random_state=0)
-clusters = kmeans.fit_predict(node_representations)
-
-# Create a new graph with a reduced number of nodes
-compressed_graph = nx.DiGraph()
-for i, cluster in enumerate(clusters):
-    compressed_graph.add_node(cluster, name=G.nodes[i]["name"])
-
-# Add edges to the compressed graph
-for i, cluster1 in enumerate(clusters):
-    for j, cluster2 in enumerate(clusters):
-        if G.has_edge(i, j):
-            compressed
+print('Last 20 nodes by Eigenvector Centrality:')
+display(eigCen.tail(20))
+# %%
