@@ -22,7 +22,7 @@ print('Edges:', G.number_of_edges())
 if nx.is_directed(G): print('Graph IS DIRECTED.')
 else: print('Graph IS UNDIRECTED')
 # %%
-def plot_graph():
+def plot_graph():Applied Data Science with Python Specialization
     plt.figure(figsize=(50, 25), dpi=80)
     nx.draw_networkx(G, with_labels=False, node_size=100)
     plt.show()
