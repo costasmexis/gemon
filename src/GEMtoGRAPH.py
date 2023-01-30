@@ -4,14 +4,13 @@ import matplotlib.pyplot as plt
 import networkx as nx
 import cobra
 
-GEM_NAME = 'textbook'
+# GEM_NAME = 'textbook'
+# model = cobra.io.load_model(GEM_NAME)
+# S = cobra.util.array.create_stoichiometric_matrix(model, array_type='DataFrame')
+# n = S.shape[0]
+# m = S.shape[1]
 
-model = cobra.io.load_model(GEM_NAME)
-S = cobra.util.array.create_stoichiometric_matrix(model, array_type='DataFrame')
-n = S.shape[0]
-m = S.shape[1]
-
-def RAG(S):
+def RAG(S, model):
 
     S = pd.DataFrame(S)
     S = S != 0
@@ -26,8 +25,9 @@ def RAG(S):
     
     return A, G
 
-def calculate_S2m(S):
-
+def calculate_S2m(S, model):
+    n = S.shape[0]
+    m = S.shape[1]
     # create a new dataframe with negated values
     S_neg = S.apply(lambda x: -x)
     S_neg = S_neg.add_prefix('rev_')
@@ -56,9 +56,12 @@ def calculate_S2m(S):
 
     return S_2m
 
-def NFG(S):
+def NFG(S, model):
 
-    S_2m = calculate_S2m(S)
+    n = S.shape[0]
+    m = S.shape[1]
+    
+    S_2m = calculate_S2m(S, model)
 
     S_2m_p = 1/2 * (np.abs(S_2m) + S_2m)
     S_2m_n = 1/2 * (np.abs(S_2m) - S_2m)
@@ -81,47 +84,7 @@ def NFG(S):
     
     return D, G
 
-
-def MFG(S):
-
-    solution = model.optimize()
-    v_fba = solution.fluxes.values
-
-    v_2m_p = pd.DataFrame(1/2 * (np.abs(v_fba) + v_fba))
-    v_2m_n = pd.DataFrame(1/2 * (np.abs(v_fba) - v_fba))
-
-    v_2m = pd.concat([v_2m_p, v_2m_n])
-
-    S_2m = calculate_S2m(S)
-
-    S_2m_p = 1/2 * (np.abs(S_2m) + S_2m)
-    S_2m_n = 1/2 * (np.abs(S_2m) - S_2m)
-
-    j = S_2m_p.dot(v_2m)
-    j = j.reshape(j.shape[0],)
-
-    V = np.diag(v_2m[0])
-    J = np.diag(j)
-
-    t_1 = (S_2m_p.dot(V)).T
-
-    t_2 = np.linalg.pinv(J)
-
-    t_3 = S_2m_n.dot(V)
-
-    t = t_1.dot(t_2)
-
-    M = t.dot(t_3)
-    M = pd.DataFame(M)
-
-    G = nx.from_pandas_adjacency(G, create_using=nx.DiGraph)
-
-    print("# nodes:", G.number_of_nodes(), "\n# edges:", G.number_of_edges())
-    
-    return M, G
-
-
-def MFG(S):
+def MFG(S, model):
         
     solution = model.optimize()
     v_fba = solution.fluxes
@@ -129,7 +92,7 @@ def MFG(S):
     v_2m_p = pd.DataFrame(1/2 * (np.abs(v_fba) + v_fba))
     v_2m_n = pd.DataFrame(1/2 * (np.abs(v_fba) - v_fba))
 
-    S_2m = calculate_S2m(S)
+    S_2m = calculate_S2m(S, model)
 
     v_2m = pd.concat([v_2m_p, v_2m_n])
     v_2m.index =S_2m.columns
@@ -160,3 +123,8 @@ def MFG(S):
     print("# nodes:", G.number_of_nodes(), "\n# edges:", G.number_of_edges())
 
     return M, G
+
+
+if __name__ == "__main__":
+    
+    print('hello')
