@@ -78,8 +78,6 @@ def NFG(S):
     return D, G
 
 
-
-
 def MFG(S):
 
     solution = model.optimize()
@@ -119,39 +117,42 @@ def MFG(S):
     return M, G
 
 
+def MFG(S):
+        
+    solution = model.optimize()
+    v_fba = solution.fluxes
 
-solution = model.optimize()
-v_fba = solution.fluxes
+    v_2m_p = pd.DataFrame(1/2 * (np.abs(v_fba) + v_fba))
+    v_2m_n = pd.DataFrame(1/2 * (np.abs(v_fba) - v_fba))
 
-v_2m_p = pd.DataFrame(1/2 * (np.abs(v_fba) + v_fba))
-v_2m_n = pd.DataFrame(1/2 * (np.abs(v_fba) - v_fba))
+    S_2m = calculate_S2m(S)
 
-S_2m = calculate_S2m(S)
+    v_2m = pd.concat([v_2m_p, v_2m_n])
+    v_2m.index =S_2m.columns
 
-v_2m = pd.concat([v_2m_p, v_2m_n])
-v_2m.index =S_2m.columns
+    S_2m_p = 1/2 * (np.abs(S_2m) + S_2m)
+    S_2m_n = 1/2 * (np.abs(S_2m) - S_2m)
 
-S_2m_p = 1/2 * (np.abs(S_2m) + S_2m)
-S_2m_n = 1/2 * (np.abs(S_2m) - S_2m)
+    j = S_2m_p.dot(v_2m)
 
-j = S_2m_p.dot(v_2m)
-# j = j.reshape(j.shape[0],)
+    V = np.diag(v_2m['fluxes'])
+    J = np.diag(j['fluxes'])
 
-V = np.diag(v_2m['fluxes'])
-J = np.diag(j['fluxes'])
+    t_1 = (S_2m_p.dot(V)).T
 
-t_1 = (S_2m_p.dot(V)).T
+    t_2 = np.linalg.pinv(J)
 
-t_2 = np.linalg.pinv(J)
+    t_3 = S_2m_n.dot(V)
+    t_3.columns = S_2m.columns
 
-t_3 = S_2m_n.dot(V)
+    t = t_1.dot(t_2)
+    t.index = S_2m.columns
+    t.columns = S_2m.index
 
-t = t_1.dot(t_2)
+    M = t.dot(t_3)
+    M = pd.DataFrame(M)
 
-M = t.dot(t_3)
-M = pd.DataFame(M)
+    G = nx.from_pandas_adjacency(M, create_using=nx.DiGraph)
+    print("# nodes:", G.number_of_nodes(), "\n# edges:", G.number_of_edges())
 
-G = nx.from_pandas_adjacency(G, create_using=nx.DiGraph)
-
-print("# nodes:", G.number_of_nodes(), "\n# edges:", G.number_of_edges())
-
+    return M, G
