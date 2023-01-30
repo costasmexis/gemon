@@ -40,8 +40,12 @@ def calculate_S2m(S):
     zero_matrix = pd.DataFrame(np.zeros((m,m)))
     # concatenate the two dataframes along the columns
     temp_2a = pd.concat([identity_matrix, zero_matrix], axis=1)   # [Im | 0] 
+    
+    reversibility = pd.DataFrame(index=S.columns)
+    r = [int(model.reactions.get_by_id(rxn).reversibility) for rxn in S.columns]
+    reversibility['reversibility'] = r
 
-    diag_r = pd.DataFrame(np.diag([int(rxn.reversibility) for rxn in model.reactions]))
+    diag_r = pd.DataFrame(np.diag(reversibility['reversibility']))
     temp_2b = pd.concat([zero_matrix, diag_r], axis=1)  # [0 | diag(r)]
 
     temp_2 = pd.concat([temp_2a, temp_2b], axis=0)
