@@ -84,11 +84,8 @@ def NFG(S, model):
     
     return D, G
 
-def MFG(S, model):
+def MFG(S, model, v_fba):
         
-    solution = model.optimize()
-    v_fba = solution.fluxes
-
     v_2m_p = pd.DataFrame(1/2 * (np.abs(v_fba) + v_fba))
     v_2m_n = pd.DataFrame(1/2 * (np.abs(v_fba) - v_fba))
 
