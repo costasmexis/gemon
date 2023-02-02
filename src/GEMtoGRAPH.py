@@ -25,12 +25,13 @@ def RAG(S, model):
     
     return A, G
 
-def calculate_S2m(S, model):
+def calculate_S2m(S, model, v_fba):
     n = S.shape[0]
     m = S.shape[1]
+
     # create a new dataframe with negated values
     S_neg = S.apply(lambda x: -x)
-    S_neg = S_neg.add_prefix('rev_')
+    S_neg = S_neg.add_prefix('rev?')
     # concatenate the original dataframe and the negated dataframe
     temp_1 = pd.concat([S, S_neg], axis=1)   # [S | -S]
 
@@ -42,7 +43,13 @@ def calculate_S2m(S, model):
     temp_2a = pd.concat([identity_matrix, zero_matrix], axis=1)   # [Im | 0] 
     
     reversibility = pd.DataFrame(index=S.columns)
-    r = [int(model.reactions.get_by_id(rxn).reversibility) for rxn in S.columns]
+
+    r = []
+    for col in v_fba.T.columns:
+        if v_fba.T[col][0] < 0: r.append(1)
+        else: r.append(0)
+
+    # r = [int(model.reactions.get_by_id(rxn).reversibility) for rxn in S.columns]
     reversibility['reversibility'] = r
 
     diag_r = pd.DataFrame(np.diag(reversibility['reversibility']))
@@ -61,7 +68,7 @@ def NFG(S, model):
     n = S.shape[0]
     m = S.shape[1]
     
-    S_2m = calculate_S2m(S, model)
+    S_2m = calculate_S2m(S, model, v_fba)
 
     S_2m_p = 1/2 * (np.abs(S_2m) + S_2m)
     S_2m_n = 1/2 * (np.abs(S_2m) - S_2m)
@@ -89,7 +96,7 @@ def MFG(S, model, v_fba):
     v_2m_p = pd.DataFrame(1/2 * (np.abs(v_fba) + v_fba))
     v_2m_n = pd.DataFrame(1/2 * (np.abs(v_fba) - v_fba))
 
-    S_2m = calculate_S2m(S, model)
+    S_2m = calculate_S2m(S, model, v_fba)
 
     v_2m = pd.concat([v_2m_p, v_2m_n])
     v_2m.index =S_2m.columns
@@ -119,7 +126,7 @@ def MFG(S, model, v_fba):
     G = nx.from_pandas_adjacency(M, create_using=nx.DiGraph)
     print("# nodes:", G.number_of_nodes(), "\n# edges:", G.number_of_edges())
 
-    return M, G
+    return M, S_2m, G
 
 
 if __name__ == "__main__":
